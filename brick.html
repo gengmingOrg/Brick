@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title></title>
+    <style media="screen">
+      canvas {
+        border: 1px black solid ;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="400" height="300">
+
+    </canvas>
+    <script type="text/javascript">
+
+      //／**最外层只能有 函数 ，程序只有一个入口**／
+
+      var log  = console.log.bind(console)
+      // img
+      var drawImageByPath = function(path) {
+        var img  = new Image()
+        img.src = path
+        return img
+      }
+      //砖块
+      var Brick = function() {
+        var img = drawImageByPath('bricks.png')
+        var o = {
+          img : img,
+          x: 120,
+          y: 120,
+          alive: true,
+        }
+        o.kill = function() {
+          o.alive = false
+        }
+
+        return o
+      }
+      //子弹
+      var Ball = function() {
+        var img = drawImageByPath('ball.png')
+        var o = {
+          img : img,
+          x: 100,
+          y: 150,
+          speedX: 5,
+          speedY: 5,
+          fired: false,
+        }
+        //发射按键
+        o.ballfired = function() {
+          o.fired = true;
+        }
+        o.ballstop = function() {
+          o.fired = false;
+        }
+        o.move = function() {
+
+          if(o.fired) {
+            if(o.x < 0 || o.x >400 ) {
+              o.speedX = -o.speedX
+            }
+            if(o.y < 0 || o.y >300 ) {
+              o.speedY = -o.speedY
+            }
+            o.x += o.speedX
+            o.y -= o.speedY
+          }
+        }
+        o.rebound = function() {
+          o.speedY = -o.speedY
+        }
+        return o
+      }
+      //挡板
+      var Paddle = function() {
+        var img = drawImageByPath('paddle.png')
+        var o = {
+          img : img,
+          x: 200,
+          y: 250,
+          speed: 5,
+        }
+        o.moveLeft = function(){
+          o.x -= o.speed
+        }
+        o.moveRight = function(){
+          o.x += o.speed
+        }
+        return o
+      }
+      //相交函数
+      var collide = function(rect1,rect2) {
+        var maxX,maxY,minX,minY
+
+        maxX = rect1.x+rect1.img.width >= rect2.x+rect2.img.width ? rect1.x+rect1.img.width : rect2.x+rect2.img.width
+        //log(rect1.x)
+        maxY = rect1.y+rect1.img.height >= rect2.y+rect2.img.height ? rect1.y+rect1.img.height : rect2.y+rect2.img.height
+        minX = rect1.x <= rect2.x ? rect1.x : rect2.x
+        minY = rect1.y <= rect2.y ? rect1.y : rect2.y
+        //log(maxX,maxY,minX, minY)
+        if(maxX - minX <= rect1.img.width+rect2.img.width && maxY - minY <= rect1.img.height+rect2.img.height){
+          return true
+        }else{
+          return false
+        }
+      }
+
+      var Ggame = function() {
+        var g = {
+          actions: {},
+          keyDowns: {},
+        }
+        //canvas
+        var canvas = document.getElementById('canvas')
+        var ctx = canvas.getContext('2d')
+        g.canvas = canvas
+        g.ctx = ctx
+        // 跟个图片画图
+        g.drawImageByImage = function(gameImge) {
+          //log(gameImge)
+          g.ctx.drawImage(gameImge.img, gameImge.x, gameImge.y)
+        }
+        //监听
+        window.addEventListener('keydown',function(event){
+          var k = event.key
+          g.keyDowns[k] = true
+        })
+        window.addEventListener('keyup',function(event){
+          var k = event.key
+          g.keyDowns[k] = false
+        })
+
+        //注册函数
+        g.registerAction = function(key, callback) {
+          g.actions[key] = callback
+        }
+        //定时器
+        setInterval(function(){
+          //update 注册函数
+          var actions = g.actions
+          for(var key in actions) {
+            if(g.keyDowns[key]){
+              actions[key]();
+            }
+          }
+          g.update()
+          // clear
+          ctx.clearRect(0, 0, 400, 300)
+          //drawImage
+          g.drawImage()
+        },1000/30)
+        return g
+      }
+      var __main = function() {
+        var game = Ggame()
+        var paddle = Paddle()
+        var ball = Ball()
+        var brick = Brick()
+
+        //事件组册
+        game.registerAction('a', function() {
+          paddle.moveLeft()
+        })
+        game.registerAction('d', function() {
+          paddle.moveRight()
+        })
+
+        //球发射按钮
+        game.registerAction('f', function() {
+          //ball.move();
+          ball.ballfired()
+        })
+        //球发射按钮
+        game.registerAction('s', function() {
+          //ball.move();
+          ball.ballstop()
+        })
+
+
+        // 注册 game update if不是别人的逻辑在自己的逻辑里面加上函数在外面重写
+        game.update = function() {
+          ball.move();
+          //log(collide(paddle, ball))
+          if(collide(ball, paddle)){
+            ball.speedY = -ball.speedY
+          }
+          if(collide(ball, brick) && brick.alive){
+            //log('相撞')
+            brick.kill()
+            ball.rebound()
+          }
+        }
+        //drawImage
+        game.drawImage = function() {
+          //画图
+          game.drawImageByImage(paddle);
+          game.drawImageByImage(ball)
+          if(brick.alive) {
+            game.drawImageByImage(brick)
+          }
+
+        }
+
+
+      }
+
+      __main()
+    </script>
+  </body>
+
+</html>
